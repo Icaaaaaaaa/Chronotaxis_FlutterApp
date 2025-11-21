@@ -35,6 +35,16 @@ class DatabaseService {
   }
 
   Future<void> _createDatabase(Database db, int version) async {
+    // users table
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
     // weekly_schedule table
     await db.execute('''
       CREATE TABLE weekly_schedule (
@@ -89,6 +99,31 @@ class DatabaseService {
         FOREIGN KEY(activity_id) REFERENCES activities(id) ON DELETE CASCADE
       )
     ''');
+  }
+
+  // ========== User Operations ==========
+  Future<int> insertUser(String email, String password) async {
+    final db = await database;
+    return await db.insert('users', {
+      'email': email,
+      'password': password,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<Map<String, dynamic>?> getUserByEmail(String email) async {
+    final db = await database;
+    final result = await db.query(
+      'users',
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+    return result.isNotEmpty ? result.first : null;
+  }
+
+  Future<bool> emailExists(String email) async {
+    final user = await getUserByEmail(email);
+    return user != null;
   }
 
   // ========== Weekly Schedule Operations ==========

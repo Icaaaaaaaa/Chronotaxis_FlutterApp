@@ -2,19 +2,23 @@ import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
 import 'services/preferences_service.dart';
 import 'services/notification_service.dart';
+import 'services/auth_service.dart';
 import 'pages/home_page.dart';
 import 'pages/weekly_schedule_page.dart';
-import 'pages/daily_agenda_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/room_management_page.dart';
 import 'pages/activity_management_page.dart';
-import 'pages/progress_tracker_page.dart';
+import 'pages/login_page.dart';
+import 'pages/register_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize Shared Preferences
   await PreferencesService().init();
+  
+  // Initialize Auth Service
+  await AuthService().init();
   
   // Initialize Notifications
   await NotificationService().init();
@@ -32,6 +36,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   late bool _isDarkMode;
   final PreferencesService _prefService = PreferencesService();
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -46,7 +51,14 @@ class _MyAppState extends State<MyApp> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: _MyHomePage(onThemeChanged: _handleThemeChange),
+      home: _authService.isLoggedIn() 
+          ? _MyHomePage(onThemeChanged: _handleThemeChange)
+          : const LoginPage(),
+      routes: {
+        '/home': (context) => _MyHomePage(onThemeChanged: _handleThemeChange),
+        '/login': (context) => const LoginPage(),
+        '/register': (context) => const RegisterPage(),
+      },
     );
   }
 
@@ -61,7 +73,6 @@ class _MyHomePage extends StatefulWidget {
   final ValueChanged<bool> onThemeChanged;
 
   const _MyHomePage({
-    super.key,
     required this.onThemeChanged,
   });
 
@@ -75,10 +86,8 @@ class __MyHomePageState extends State<_MyHomePage> {
   final List<Widget> _pages = [
     const HomePage(),
     const WeeklySchedulePage(),
-    const DailyAgendaPage(),
     const RoomManagementPage(),
     const ActivityManagementPage(),
-    const ProgressTrackerPage(),
   ];
 
   @override
@@ -102,20 +111,12 @@ class __MyHomePageState extends State<_MyHomePage> {
             label: 'Jadwal',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.event),
-            label: 'Agenda',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.meeting_room),
             label: 'Ruangan',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.task),
             label: 'Aktivitas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle),
-            label: 'Progress',
           ),
         ],
         type: BottomNavigationBarType.fixed,
@@ -126,6 +127,7 @@ class __MyHomePageState extends State<_MyHomePage> {
 
   Widget _buildDrawer(BuildContext context) {
     final PreferencesService prefService = PreferencesService();
+    final AuthService authService = AuthService();
     final userName = prefService.loadUserName() ?? 'User';
 
     return Drawer(
@@ -134,7 +136,7 @@ class __MyHomePageState extends State<_MyHomePage> {
         children: [
           UserAccountsDrawerHeader(
             accountName: Text(userName),
-            accountEmail: const Text('timemanager@app.com'),
+            accountEmail: Text(authService.getLoggedInUser() ?? 'user@app.com'),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Theme.of(context).colorScheme.primary,
               child: Text(
@@ -168,22 +170,12 @@ class __MyHomePageState extends State<_MyHomePage> {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.event),
-            title: const Text('Agenda Hari Ini'),
-            onTap: () {
-              Navigator.pop(context);
-              setState(() {
-                _currentIndex = 2;
-              });
-            },
-          ),
-          ListTile(
             leading: const Icon(Icons.meeting_room),
             title: const Text('Manajemen Ruangan'),
             onTap: () {
               Navigator.pop(context);
               setState(() {
-                _currentIndex = 3;
+                _currentIndex = 2;
               });
             },
           ),
@@ -193,17 +185,7 @@ class __MyHomePageState extends State<_MyHomePage> {
             onTap: () {
               Navigator.pop(context);
               setState(() {
-                _currentIndex = 4;
-              });
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.check_circle),
-            title: const Text('Progress Tracker'),
-            onTap: () {
-              Navigator.pop(context);
-              setState(() {
-                _currentIndex = 5;
+                _currentIndex = 3;
               });
             },
           ),
@@ -223,9 +205,45 @@ class __MyHomePageState extends State<_MyHomePage> {
               );
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            onTap: () {
+              _logout(context);
+            },
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Apakah Anda yakin ingin logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final authService = AuthService();
+      await authService.logout();
+      
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    }
   }
 }
 
