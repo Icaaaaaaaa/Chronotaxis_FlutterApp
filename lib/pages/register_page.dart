@@ -60,22 +60,37 @@ class _RegisterPageState extends State<RegisterPage> {
       _isLoading = true;
     });
 
-    final success = await _authService.register(email, password);
+    try {
+      final success = await _authService.register(email, password);
 
-    setState(() {
-      _isLoading = false;
-    });
+      setState(() {
+        _isLoading = false;
+      });
 
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pendaftaran berhasil! Silakan login')),
-      );
-      if (mounted) {
-        Navigator.pop(context);
+      if (success) {
+        print('Register berhasil untuk: $email');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pendaftaran berhasil! Silakan login')),
+        );
+        if (mounted) {
+          Navigator.pop(context);
+          _emailController.clear();
+          _passwordController.clear();
+          _confirmPasswordController.clear();
+        }
+      } else {
+        print('Register gagal - email sudah terdaftar');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Email sudah terdaftar')),
+        );
       }
-    } else {
+    } catch (e) {
+      print('Register error: $e');
+      setState(() {
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email sudah terdaftar')),
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }

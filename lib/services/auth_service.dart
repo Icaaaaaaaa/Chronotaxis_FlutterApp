@@ -22,14 +22,15 @@ class AuthService {
       
       // Check if email already exists
       if (await dbService.emailExists(email)) {
+        print('Email sudah terdaftar: $email');
         return false;
       }
 
       // Insert new user
       await dbService.insertUser(email, password);
+      print('User berhasil didaftarkan: $email');
       
-      // Save current user email to SharedPreferences
-      await _prefs.setString('logged_in_email', email);
+      // Jangan auto-login, user harus login manual
       
       return true;
     } catch (e) {

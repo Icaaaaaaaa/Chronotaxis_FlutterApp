@@ -37,20 +37,32 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    final success = await _authService.login(email, password);
+    try {
+      final success = await _authService.login(email, password);
 
-    setState(() {
-      _isLoading = false;
-    });
+      setState(() {
+        _isLoading = false;
+      });
 
-    if (success) {
-      // Navigate to home
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
+      if (success) {
+        print('Login berhasil untuk: $email');
+        // Navigate to home
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
+      } else {
+        print('Login gagal - email atau password salah');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Email atau password salah')),
+        );
       }
-    } else {
+    } catch (e) {
+      print('Login error: $e');
+      setState(() {
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email atau password salah')),
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }
